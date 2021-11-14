@@ -3,15 +3,20 @@ var tasks = {};
 var createTask = function (taskText, taskDate, taskList) {
   // create elements that make up a task item
   var taskLi = $("<li>").addClass("list-group-item");
+
   var taskSpan = $("<span>")
     .addClass("badge badge-primary badge-pill")
     .text(taskDate);
+
   var taskP = $("<p>")
     .addClass("m-1")
     .text(taskText);
 
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
+
+  // check due date
+  auditTask(taskLi);
 
 
   // append to ul list on the page
@@ -72,8 +77,8 @@ var loadTasks = function () {
 
       // trim down lists ID to match object property
       var arrName = $(this)
-      .attr("id")
-      .replace("list-", "");
+        .attr("id")
+        .replace("list-", "");
 
       //update array on tasks object and save
       tasks[arrName] = tempArr;
@@ -84,13 +89,13 @@ var loadTasks = function () {
   $("#trash").droppable({
     accept: ".card .list-group-item",
     tolerance: "touch",
-    drop: function(event, ui) {
+    drop: function (event, ui) {
       ui.draggable.remove();
     },
-    over: function(event, ui) {
+    over: function (event, ui) {
       console.log("over");
     },
-    out: function(event, ui) {
+    out: function (event, ui) {
       console.log("out");
     }
   })
@@ -167,12 +172,40 @@ $(".list-group").on("click", "span", function () {
   //swap out elements
   $(this).replaceWith(dateInput);
 
-  //automatically focus on new element
-  dateInput.trigger("focus");
+  //enable jQuery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function () {
+      // when calander is closed, force a "change" event on the date input
+      $(this).trigger("change");
+    }
+  });
+    //automatically focus on new element
+    dateInput.trigger("focus");
 });
 
+var auditTask = function (taskEl) {
+
+  //get date from task element
+  var date = $(taskEl).find("span").text().trim();
+
+  //convert the moment object at 5pm
+  var time = moment(date, "L").set("hour", 17);
+
+  //remove any old classes from elements
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger")
+
+  //apply new classes if task is over or nearing due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger")
+  }
+  else if (Math.abs(moment().diff(time, "days")) <+ 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
+
 // value of due date was changed
-$(".list-group").on("blur", "input[type='text']", function () {
+$(".list-group").on("change", "input[type='text']", function () {
   // get current text
   var date = $(this)
     .val()
@@ -200,10 +233,14 @@ $(".list-group").on("blur", "input[type='text']", function () {
 
   //replace inout with span element
   $(this).replaceWith(taskSpan);
+
+  // pass tasks <li> element into auditTask() to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
-
-
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
 
 // modal was triggered
 $("#task-form-modal").on("show.bs.modal", function () {
